@@ -4,3 +4,6 @@
 [submodule "submodules/allwpilib"]
 	path = submodules/allwpilib
 	url = https://github.com/wpilibsuite/allwpilib.git
+[submodule "submodules/allwpilib-meson"]
+	path = submodules/allwpilib-meson
+	url = https://github.com/Danny-Dunn/allwpilib-meson.git

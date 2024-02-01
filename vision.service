@@ -1,0 +1,12 @@
+[Unit]
+Description=Computer Vision Processor
+After=network.target
+
+[Service]
+Type=exec
+User=robotics
+Group=robotics
+ExecStart=/home/robotics/vision/visiondemo
+
+[Install]
+WantedBy=multi-user.target

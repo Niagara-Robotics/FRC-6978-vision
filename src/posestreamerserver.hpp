@@ -1,12 +1,21 @@
-class PoseStreamerServer
+#include <vector>
+#include <list>
+#include <posestreamerserverclient.hpp>
+#include <thread>
+
+namespace posestreamer
 {
-private:
-    void process_packet(int sock);
-    void parse_request(int sock);
+    class PoseStreamerServer
+    {
+    private:
+        std::vector<std::unique_ptr<PoseStreamerServerClient>> clients;
+        int server_socket;
+        void main_loop();
+        std::thread thread;
+    public:
+        PoseStreamerServer(int port);
+        void publish_stream(int pose_class, int obj_id, std::vector<double> pose);
+        ~PoseStreamerServer();
+    };
     
-public:
-    PoseStreamerServer(/* args */);
-    ~PoseStreamerServer();
-};
-
-
+} // namespace posestreamer

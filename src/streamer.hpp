@@ -11,6 +11,7 @@ namespace vision {
         int port;
         cv::Mat *frame;
         std::mutex *frame_mutex;
+        bool m_valid;
         void serve();
     public:
         Streamer(std::string name, int port, cv::Mat *frame, std::condition_variable *frame_mutex);

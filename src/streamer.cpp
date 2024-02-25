@@ -9,10 +9,9 @@
 //hello
 namespace vision
 {
-
     Streamer::Streamer(std::string name, int port, cv::Mat *frame, std::condition_variable *frame_mutex)
     {
-        svr.Get("/hi", [frame, frame_mutex](const httplib::Request &req, httplib::Response &res) {
+        svr.Get("/hi", [frame, frame_mutex, this](const httplib::Request &req, httplib::Response &res) {
             
             /*res.set_header("Connection", "close");
             res.set_header("Max-Age", "0");
@@ -58,6 +57,8 @@ namespace vision
                 }
                 clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &network_time);
 
+                if(!this->m_valid) return;
+
                 /*printf("Stream: %fms,%fms,%fms\n", 
                     millisecondDiff(start_time, mutex_time),
                     millisecondDiff(mutex_time, encode_time),
@@ -74,7 +75,9 @@ namespace vision
         this->port = port;
         this->frame = frame;
 
+        this->m_valid = true;
         thread = std::thread(&Streamer::serve, this);
+        
     }
 
     void Streamer::serve() {
@@ -83,6 +86,11 @@ namespace vision
     
     Streamer::~Streamer()
     {
+        m_valid = false;
+        svr.stop();
+        if(thread.joinable()) {
+            thread.join();
+        }
     }
     
 } // namespace vision

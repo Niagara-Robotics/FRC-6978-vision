@@ -13,6 +13,7 @@ namespace posestreamer
 
         while (true){
             printf("waiting for client\n");
+            if(!m_valid) return;
             int client_socket = accept(server_socket, &client_addr, (socklen_t*)&client_addr_len);
             if(client_socket < 0) {
                 printf("Failed to accept connection\n");
@@ -62,11 +63,16 @@ namespace posestreamer
             return;
         }
         printf("starting thread\n");
+        m_valid = true;
         thread = std::thread(&PoseStreamerServer::main_loop, this);
     }
 
     PoseStreamerServer::~PoseStreamerServer() {
         printf("Closing socket\n");
         close(server_socket);
+        m_valid = false;
+        if(thread.joinable()) {
+            thread.join();
+        }
     }
 } // namespace posestreamer

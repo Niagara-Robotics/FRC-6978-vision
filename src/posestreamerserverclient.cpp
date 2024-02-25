@@ -1,5 +1,6 @@
 #include "posestreamerpackets.hpp"
 #include "posestreamerserverclient.hpp"
+#include "utils.hpp"
 
 #include <stdio.h>
 #include <netinet/in.h>
@@ -18,6 +19,29 @@ void PoseStreamerServerClient::process_packet()
     {
         
         size_t in;
+
+        int preamble_1 = 0;
+        in = read(socket, &preamble_1, 1);
+        if(in<1) {
+            m_valid=false;
+            return;
+        }
+        if(preamble_1 != PACKET_PREAMBLE_1) {
+            printf("Skipping non-preamble byte\n");
+            continue;
+        }
+
+        int preamble_2 = 0;
+        in = read(socket, &preamble_2, 1);
+        if(in<1) {
+            m_valid=false;
+            return;
+        }
+        if(preamble_2 != PACKET_PREAMBLE_2) {
+            printf("Skipping non-preamble 2 byte\n");
+            continue;
+        }
+
         int packet_type = 0;
         in = read(socket, &packet_type, 1);
         if(in<1) {
@@ -25,7 +49,12 @@ void PoseStreamerServerClient::process_packet()
             return;
         }
         //socket_mutex.lock();
+        if(packet_type != 3) {
         printf("packet_type: %i\n", packet_type);
+        }
+        if(packet_type == 0) {
+            continue;
+        }
 
         size_t header_len = 0;
         in = read(socket, &header_len, 1);
@@ -34,21 +63,29 @@ void PoseStreamerServerClient::process_packet()
             return;
         }
 
+        //printf("header_len: %i\n", header_len);
+
+
         switch (packet_type)
         {
         case PACKET_TYPE_REQUEST:
+            printf("Got request\n");
             handle_request(header_len);
             break;
-        
+        case PACKET_TYPE_CLOCK_REQUEST:
+            handle_clock_request();
+            break;
         default:
             break;
         }
         //socket_mutex.unlock();
-        printf("done receiving packet\n");
+        //printf("done receiving packet\n");
     }
 }
 
 void PoseStreamerServerClient::send_request_response(char type, char id, char status) {
+    packetpreamble preamble;
+    
     packetheader header;
     header.packet_type = PACKET_TYPE_REQUEST_RESPONSE;
     header.header_size = sizeof(requestresponse);
@@ -60,6 +97,9 @@ void PoseStreamerServerClient::send_request_response(char type, char id, char st
 
     socket_mutex.lock();
     size_t out = 0;
+
+    out = write(socket, &preamble, sizeof(preamble));
+    if(out < sizeof(preamble)) m_valid=false;
 
     out = write(socket, &header, sizeof(header));
     if(out < sizeof(header)) m_valid=false;
@@ -75,14 +115,35 @@ void PoseStreamerServerClient::handle_request(size_t header_len) {
     size_t in;
     //todo: length checking
     packet.request_header = posestreamer::requestheader();
-    in = read(socket, &packet.request_header, header_len);
-    if(in < header_len)  {
-        printf("Failed receiving header: %i\n", in);
+    size_t recvdHeaderLen = 0;
+    while (recvdHeaderLen < header_len) {
+        in = read(socket, &packet.request_header, header_len);
+        if(in < 1) {
+            printf("Failed receiving header: expected %i got %i\n", header_len, in);
+            return;
+        }
+        recvdHeaderLen+= in;
+    }
+    if(recvdHeaderLen < header_len)  {
+        printf("Header too short: expected %i got %i\n", header_len, recvdHeaderLen);
     }
 
     packet.request_body = malloc(packet.request_header.request_size);
-    in = read(socket, packet.request_body, packet.request_header.request_size);
-    if(in < packet.request_header.request_size) return;
+    size_t recvdBodyLen = 0;
+    while (recvdBodyLen < packet.request_header.request_size) {
+        in = read(socket, packet.request_body, packet.request_header.request_size);
+        if(in < 1) {
+            printf("Failed receiving request body: expected %i got %i\n", packet.request_header.request_size, in);
+            printf("request type: %i\n", packet.request_header.request_type);
+            return;
+        }
+        recvdBodyLen+= in;
+    }
+    
+    if(recvdBodyLen < packet.request_header.request_size) {
+        printf("Body too short: expected %i got %i\n", header_len, recvdBodyLen);
+        return;
+    }
 
     switch (packet.request_header.request_type)
     {
@@ -93,8 +154,33 @@ void PoseStreamerServerClient::handle_request(size_t header_len) {
         break;
     
     default:
+        printf("Unknown request type %i\n", packet.request_header.request_type);
         break;
     }
+}
+
+void PoseStreamerServerClient::handle_clock_request() {
+    packetpreamble preamble;
+    packetheader header;
+    clockresponse response;
+
+    header.header_size = 8;
+    header.packet_type = PACKET_TYPE_CLOCK_RESPONSE;
+
+    response.time = CurrentTime_nanoseconds();
+
+    socket_mutex.lock();
+    size_t out = 0;
+
+    out = write(socket, &preamble, sizeof(preamble));
+    if(out < sizeof(preamble)) m_valid=false;
+
+    out = write(socket, &header, sizeof(header));
+    if(out < sizeof(header)) m_valid=false;
+
+    out = write(socket, &response, sizeof(response));
+    if(out < sizeof(response)) m_valid=false;
+    socket_mutex.unlock();
 }
 
 void PoseStreamerServerClient::publishStream(int pose_class, int obj_id, std::vector<double> pose) {
@@ -121,10 +207,14 @@ void PoseStreamerServerClient::publishStream(int pose_class, int obj_id, std::ve
     packet_header.packet_type = PACKET_TYPE_STREAM;
     packet_header.header_size = sizeof(stream_header);
 
+    packetpreamble preamble;
 
     socket_mutex.lock();
 
     size_t out;
+
+    out = write(socket, &preamble, sizeof(preamble));
+    if(out < sizeof(preamble)) m_valid=false;
 
     out = write(socket, &packet_header, sizeof(packet_header));
     if(out < sizeof(packet_header)) m_valid=false;

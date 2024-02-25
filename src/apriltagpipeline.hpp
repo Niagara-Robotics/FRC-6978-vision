@@ -1,21 +1,9 @@
 #include <visionpipeline.h>
+#include <posestreamerserver.hpp>
 
-namespace vision {
-    class apriltagpipeline: public visionpipeline
-    {
-    private:
-        /* data */
-    public:
-        apriltagpipeline(/* args */);
-        ~apriltagpipeline();
-    };
-    
-    apriltagpipeline::apriltagpipeline(/* args */)
-    {
-    }
-    
-    apriltagpipeline::~apriltagpipeline()
-    {
-    }
-    
-}
+#ifndef APRILTAG_PIPELINE_H
+
+int apriltag_pipeline_execute(std::string dev, posestreamer::PoseStreamerServer *pose_streamer, int video_streamer_port);
+
+#define APRILTAG_PIPELINE_H
+#endif

@@ -4,6 +4,8 @@
 #include <mutex>
 #include <thread>
 
+#ifndef POSE_STREAMER_SERVER_CLIENT_H
+
 namespace posestreamer
 {
 
@@ -12,6 +14,7 @@ class PoseStreamerServerClient
 private:
     void process_packet();
     void handle_request(size_t header_len);
+    void handle_clock_request();
     void send_request_response(char type, char id, char status);
     std::map<int, int> requested_streams;
     std::mutex socket_mutex;
@@ -26,4 +29,5 @@ public:
     ~PoseStreamerServerClient();
 };
 }
-
+#define POSE_STREAMER_SERVER_CLIENT_H
+#endif

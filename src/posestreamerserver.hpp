@@ -3,6 +3,8 @@
 #include <posestreamerserverclient.hpp>
 #include <thread>
 
+#ifndef POSE_STREAMER_SERVER_H
+
 namespace posestreamer
 {
     class PoseStreamerServer
@@ -11,6 +13,7 @@ namespace posestreamer
         std::vector<std::unique_ptr<PoseStreamerServerClient>> clients;
         int server_socket;
         void main_loop();
+        bool m_valid;
         std::thread thread;
     public:
         PoseStreamerServer(int port);
@@ -19,3 +22,5 @@ namespace posestreamer
     };
     
 } // namespace posestreamer
+#define POSE_STREAMER_SERVER_H
+#endif

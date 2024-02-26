@@ -41,7 +41,7 @@ int apriltag_pipeline_execute(std::string dev, posestreamer::PoseStreamerServer 
 
     cv::VideoCapture cap;
 
-    cap.open(dev, cv::VideoCaptureAPIs::CAP_V4L2);
+    cap.open(0, cv::VideoCaptureAPIs::CAP_V4L2);
 
     set_properties(cap);
 
@@ -86,7 +86,7 @@ int apriltag_pipeline_execute(std::string dev, posestreamer::PoseStreamerServer 
 
     cv::Mat dist_matrix = cv::Mat(cv::Size(1,5), 5, dist);
 
-    std::map<int, std::vector<cv::Point3d>> tag_map = build_map();
+    std::map<int, std::vector<cv::Point3d>> tag_map = build_home_map();
 
     for(;;) {
         //if(!cap.isOpened()) break;
@@ -111,7 +111,7 @@ int apriltag_pipeline_execute(std::string dev, posestreamer::PoseStreamerServer 
 
         clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &tag_time);
 
-        cv::Mat rvec, tvec;
+        vector<cv::Mat> rvecs, tvecs;
 
         for (int i = 0; i < zarray_size(detections); i++) {
             apriltag_detection_t *det;
@@ -159,11 +159,13 @@ int apriltag_pipeline_execute(std::string dev, posestreamer::PoseStreamerServer 
         if(det_points.size() >1) {
             cv::cornerSubPix(gray, det_points, cv::Size(11,11), cv::Size(-1, -1), cv::TermCriteria(cv::TermCriteria::EPS + cv::TermCriteria::COUNT, 200, 0.001 ));
 
-            cv::Mat rmatrix;
-            cv::solvePnP(model_points, det_points, camera_matrix, dist_matrix, rvec, tvec);
+            cv::Mat rmatrix, proj_err;
+            //cv::solvePnP(model_points, det_points, camera_matrix, dist_matrix, rvec, tvec);
+            cv::solvePnPGeneric(model_points, det_points, camera_matrix, dist_matrix, rvecs, tvecs, true, cv::SOLVEPNP_SQPNP,cv::noArray(), cv::noArray(), proj_err);
+            printf("Projection error size: %i\n", proj_err.cols);
 
-            cv::Rodrigues(rvec, rmatrix);
-            cv::Mat cam_pose = tvec.reshape(0, 1) * rmatrix;
+            cv::Rodrigues(rvecs.at(0), rmatrix);
+            cv::Mat cam_pose = tvecs.at(0).reshape(0, 1) * rmatrix;
 
             cv::rectangle(frame, cv::Rect(0, 0,100, 100), cv::Scalar(0,0,0),-1);
             cv::line(frame, cv::Point(50,0), cv::Point((cam_pose.at<double>(0)/-20)+50, (cam_pose.at<double>(1)/20)),cv::Scalar(255, 255, 255), 2);

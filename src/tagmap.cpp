@@ -66,7 +66,7 @@ std::map<int, std::vector<cv::Point3d>> build_practice_map() {
 
 std::map<int, std::vector<cv::Point3d>> build_home_map() {
     std::map<int, std::vector<cv::Point3d>> tag_map;
-    add_tag(2, 0, 0, 53.4, 0, &tag_map);
-    add_tag(3, 25.062, 0, 53.4, 0, &tag_map);
+    add_tag(2, 0, 0, 53.4, 0.0, &tag_map);
+    add_tag(3, 0, 25.062, 53.4, 0.0, &tag_map);
     return tag_map;
 }

@@ -6,6 +6,7 @@
 
 std::map<int, std::vector<cv::Point3d>> build_map();
 std::map<int, std::vector<cv::Point3d>> build_practice_map();
+std::map<int, std::vector<cv::Point3d>> build_home_map();
 
 #define TAGMAP_H
 #endif

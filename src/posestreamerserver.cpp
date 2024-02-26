@@ -1,8 +1,10 @@
 #include <sys/socket.h>
+#include <stdlib.h>
 #include <netinet/in.h>
 #include <unistd.h>
 
 #include <posestreamerserver.hpp>
+#include <stdio.h>
 //#include <posestreamerserverclient.hpp>
 
 namespace posestreamer

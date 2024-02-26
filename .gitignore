@@ -2,3 +2,4 @@ sshkey
 sshkey.pub
 .vscode/*
 .vscode
+.vscode/c_cpp_properties.json

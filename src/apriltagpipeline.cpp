@@ -26,7 +26,7 @@ void set_properties(cv::VideoCapture cap) {
 
     cap.set(cv::CAP_PROP_AUTO_EXPOSURE, 1);
     cap.set(cv::CAP_PROP_FOURCC, codec);
-    cap.set(cv::CAP_PROP_EXPOSURE, 25); //25 for arducam
+    cap.set(cv::CAP_PROP_EXPOSURE, 14); //25 for arducam
     //cap.set(cv::CAP_PROP_AUTOFOCUS, 1);
     //cap.set(cv::CAP_PROP_FOCUS, 250);
 
@@ -124,13 +124,13 @@ int apriltag_pipeline_execute(std::string dev, posestreamer::PoseStreamerServer 
                 det_points.push_back(cv::Point2f(det->p[1][0], det->p[1][1]));
                 det_points.push_back(cv::Point2f(det->p[2][0], det->p[2][1]));
                 det_points.push_back(cv::Point2f(det->p[3][0], det->p[3][1]));
-                det_points.push_back(cv::Point2f(det->c[0], det->c[1])); //center
+                //det_points.push_back(cv::Point2f(det->c[0], det->c[1])); //center
 
                 model_points.push_back(tag_map.at(det->id).at(0));
                 model_points.push_back(tag_map.at(det->id).at(1));
                 model_points.push_back(tag_map.at(det->id).at(2));
                 model_points.push_back(tag_map.at(det->id).at(3));
-                model_points.push_back(tag_map.at(det->id).at(4)); //center
+                //model_points.push_back(tag_map.at(det->id).at(4)); //center
 
                 vector<double> tag_pose_vec;
                 tag_pose_vec.push_back(det->c[0]);
@@ -157,15 +157,18 @@ int apriltag_pipeline_execute(std::string dev, posestreamer::PoseStreamerServer 
         clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &model_time);
 
         if(det_points.size() >1) {
-            cv::cornerSubPix(gray, det_points, cv::Size(11,11), cv::Size(-1, -1), cv::TermCriteria(cv::TermCriteria::EPS + cv::TermCriteria::COUNT, 200, 0.001 ));
+            cv::cornerSubPix(gray, det_points, cv::Size(11,11), cv::Size(-1, -1), cv::TermCriteria(cv::TermCriteria::EPS + cv::TermCriteria::COUNT, 250, 0.001 ));
 
-            cv::Mat rmatrix, proj_err;
+            cv::Mat rmatrix, proj_err, tvec, rvec;
             //cv::solvePnP(model_points, det_points, camera_matrix, dist_matrix, rvec, tvec);
-            cv::solvePnPGeneric(model_points, det_points, camera_matrix, dist_matrix, rvecs, tvecs, true, cv::SOLVEPNP_SQPNP,cv::noArray(), cv::noArray(), proj_err);
-            printf("Projection error size: %i\n", proj_err.cols);
+            cv::solvePnPGeneric(model_points, det_points, camera_matrix, dist_matrix, rvecs, tvecs, false, cv::SOLVEPNP_SQPNP,cv::noArray(), cv::noArray(), proj_err);
+            tvec = tvecs.at(0);
+            rvec = rvecs.at(0);
+            cv::solvePnPRefineLM(model_points, det_points, camera_matrix, dist_matrix, rvec, tvec, cv::TermCriteria(cv::TermCriteria::EPS, 5000, 0.001 ));
+            printf("Projection error size: %f\n", proj_err.at<double>(0));
 
-            cv::Rodrigues(rvecs.at(0), rmatrix);
-            cv::Mat cam_pose = tvecs.at(0).reshape(0, 1) * rmatrix;
+            cv::Rodrigues(rvec, rmatrix);
+            cv::Mat cam_pose = tvec.reshape(0, 1) * rmatrix;
 
             cv::rectangle(frame, cv::Rect(0, 0,100, 100), cv::Scalar(0,0,0),-1);
             cv::line(frame, cv::Point(50,0), cv::Point((cam_pose.at<double>(0)/-20)+50, (cam_pose.at<double>(1)/20)),cv::Scalar(255, 255, 255), 2);
@@ -185,6 +188,8 @@ int apriltag_pipeline_execute(std::string dev, posestreamer::PoseStreamerServer 
             cam_pose_vec.push_back(-cam_pose.at<double>(1));
             cam_pose_vec.push_back(-cam_pose.at<double>(2));
             cam_pose_vec.push_back(heading);
+            cam_pose_vec.push_back(proj_err.at<double>(0));
+            cam_pose_vec.push_back(det_points.size() / 4.0);
 
             pose_streamer->publish_stream(1, 1, cam_pose_vec);
         }

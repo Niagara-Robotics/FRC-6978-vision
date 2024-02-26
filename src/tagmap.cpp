@@ -19,11 +19,12 @@ void add_tag(int id, double x, double y, double z, double angle, std::map<int, s
     z *= CONVERSION_FACTOR;
 
     std::vector<cv::Point3d> points;
-    points.push_back(cv::Point3d(x-(TAG_WIDTH*cos(angle)),   y-(TAG_WIDTH*sin(angle)),      z)); //bottom left
-    points.push_back(cv::Point3d(x+(TAG_WIDTH*cos(angle)),   y+(TAG_WIDTH*sin(angle)),      z)); //bottom right
+    //printf("bottom left coords: %f %f %f\n", )
+    points.push_back(cv::Point3d(x-(TAG_WIDTH*cos(angle)),   y-(TAG_WIDTH*sin(angle)),      z-TAG_WIDTH)); //bottom left
+    points.push_back(cv::Point3d(x+(TAG_WIDTH*cos(angle)),   y+(TAG_WIDTH*sin(angle)),      z-TAG_WIDTH)); //bottom right
     points.push_back(cv::Point3d(x+(TAG_WIDTH*cos(angle)),   y+(TAG_WIDTH*sin(angle)),      z+TAG_WIDTH)); //top right
     points.push_back(cv::Point3d(x-(TAG_WIDTH*cos(angle)),   y-(TAG_WIDTH*sin(angle)),      z+TAG_WIDTH)); //top left
-    points.push_back(cv::Point3d(x,  y,  z)); //center
+    //points.push_back(cv::Point3d(x,  y,  z)); //center
     tag_map->emplace(id, points);
 }
 
@@ -57,16 +58,17 @@ std::map<int, std::vector<cv::Point3d>> build_practice_map() {
     tag_map[2].push_back(cv::Point3d(0+tagw,0,1355+tagw));
     tag_map[2].push_back(cv::Point3d(0,0,1355+tagw));
     
-    tag_map[3].push_back(cv::Point3d(397.5,0,1355)); //397.5, 1355
-    tag_map[3].push_back(cv::Point3d(397.5+tagw,0,1355));
-    tag_map[3].push_back(cv::Point3d(397.5+tagw,0,1355+tagw));
-    tag_map[3].push_back(cv::Point3d(397.5,0,1355+tagw));
+    tag_map[3].push_back(cv::Point3d(655,0,1355)); //397.5, 1355
+    tag_map[3].push_back(cv::Point3d(655+tagw,0,1355));
+    tag_map[3].push_back(cv::Point3d(655+tagw,0,1355+tagw));
+    tag_map[3].push_back(cv::Point3d(655,0,1355+tagw));
     return tag_map;
 }
 
 std::map<int, std::vector<cv::Point3d>> build_home_map() {
     std::map<int, std::vector<cv::Point3d>> tag_map;
-    add_tag(2, 0, 0, 53.4, 0.0, &tag_map);
-    add_tag(3, 0, 25.062, 53.4, 0.0, &tag_map);
+    add_tag(1, 64.5, -29.4, 66.5, toRadians(90.0), &tag_map);
+    add_tag(3, 0.0, 25.065, 56.3, toRadians(  0.0), &tag_map);
+    add_tag(2, 0.0, 0, 56.3, toRadians(  0.0), &tag_map);
     return tag_map;
 }

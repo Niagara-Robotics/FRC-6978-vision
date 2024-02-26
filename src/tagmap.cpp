@@ -24,7 +24,7 @@ void add_tag(int id, double x, double y, double z, double angle, std::map<int, s
     points.push_back(cv::Point3d(x+(TAG_WIDTH*cos(angle)),   y+(TAG_WIDTH*sin(angle)),      z-TAG_WIDTH)); //bottom right
     points.push_back(cv::Point3d(x+(TAG_WIDTH*cos(angle)),   y+(TAG_WIDTH*sin(angle)),      z+TAG_WIDTH)); //top right
     points.push_back(cv::Point3d(x-(TAG_WIDTH*cos(angle)),   y-(TAG_WIDTH*sin(angle)),      z+TAG_WIDTH)); //top left
-    //points.push_back(cv::Point3d(x,  y,  z)); //center
+    points.push_back(cv::Point3d(x,  y,  z)); //center
     tag_map->emplace(id, points);
 }
 
@@ -52,12 +52,12 @@ std::map<int, std::vector<cv::Point3d>> build_map() {
 std::map<int, std::vector<cv::Point3d>> build_practice_map() {
     double tagw = 165.0;
     std::map<int, std::vector<cv::Point3d>> tag_map;
-    
+
     tag_map[2].push_back(cv::Point3d(0,0,1355));
     tag_map[2].push_back(cv::Point3d(0+tagw,0,1355));
     tag_map[2].push_back(cv::Point3d(0+tagw,0,1355+tagw));
     tag_map[2].push_back(cv::Point3d(0,0,1355+tagw));
-    
+
     tag_map[3].push_back(cv::Point3d(655,0,1355)); //397.5, 1355
     tag_map[3].push_back(cv::Point3d(655+tagw,0,1355));
     tag_map[3].push_back(cv::Point3d(655+tagw,0,1355+tagw));

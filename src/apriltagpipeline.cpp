@@ -54,7 +54,6 @@ int apriltag_pipeline_execute(std::string dev, posestreamer::PoseStreamerServer 
     vision::Streamer smr = vision::Streamer("maincam", video_streamer_port, &frame, &cond);
 
     printf("starting poss");
-    
 
     struct timespec start_time, cap_time, convert_time, tag_time, model_time, end_time;
     clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start_time);
@@ -97,12 +96,12 @@ int apriltag_pipeline_execute(std::string dev, posestreamer::PoseStreamerServer 
             set_properties(cap);
         }
         cap.retrieve(frame);
-        
+
         clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &cap_time);
 
         cvtColor(frame, gray, cv::COLOR_BGR2GRAY);
         image_u8_t im = {gray.cols, gray.rows, gray.cols, gray.data};
-        
+
         clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &convert_time);
 
         zarray_t *detections = apriltag_detector_detect(td, &im);
@@ -116,7 +115,6 @@ int apriltag_pipeline_execute(std::string dev, posestreamer::PoseStreamerServer 
         for (int i = 0; i < zarray_size(detections); i++) {
             apriltag_detection_t *det;
             zarray_get(detections, i, &det);
-            
 
             if(tag_map.count(det->id) > 0) {
                 //add the points from the field model and the corresponding identified aprilTag
@@ -124,13 +122,13 @@ int apriltag_pipeline_execute(std::string dev, posestreamer::PoseStreamerServer 
                 det_points.push_back(cv::Point2f(det->p[1][0], det->p[1][1]));
                 det_points.push_back(cv::Point2f(det->p[2][0], det->p[2][1]));
                 det_points.push_back(cv::Point2f(det->p[3][0], det->p[3][1]));
-                //det_points.push_back(cv::Point2f(det->c[0], det->c[1])); //center
+                det_points.push_back(cv::Point2f(det->c[0], det->c[1])); //center
 
                 model_points.push_back(tag_map.at(det->id).at(0));
                 model_points.push_back(tag_map.at(det->id).at(1));
                 model_points.push_back(tag_map.at(det->id).at(2));
                 model_points.push_back(tag_map.at(det->id).at(3));
-                //model_points.push_back(tag_map.at(det->id).at(4)); //center
+                model_points.push_back(tag_map.at(det->id).at(4)); //center
 
                 vector<double> tag_pose_vec;
                 tag_pose_vec.push_back(det->c[0]);
@@ -197,8 +195,8 @@ int apriltag_pipeline_execute(std::string dev, posestreamer::PoseStreamerServer 
         cond.notify_all();
         apriltag_detections_destroy(detections);
 
-        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end_time);            
-        /*printf("Timing: %fms,%fms,%fms,%fms,%fms total: %fms\n", 
+        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end_time);
+        /*printf("Timing: %fms,%fms,%fms,%fms,%fms total: %fms\n",
             millisecondDiff(start_time, cap_time), //cap
             millisecondDiff(cap_time, convert_time), //convert
             millisecondDiff(convert_time, tag_time), //tags

@@ -23,6 +23,7 @@ void add_tag(int id, double x, double y, double z, double angle, std::map<int, s
     points.push_back(cv::Point3d(x+(TAG_WIDTH*cos(angle)),   y+(TAG_WIDTH*sin(angle)),      z)); //bottom right
     points.push_back(cv::Point3d(x+(TAG_WIDTH*cos(angle)),   y+(TAG_WIDTH*sin(angle)),      z+TAG_WIDTH)); //top right
     points.push_back(cv::Point3d(x-(TAG_WIDTH*cos(angle)),   y-(TAG_WIDTH*sin(angle)),      z+TAG_WIDTH)); //top left
+    points.push_back(cv::Point3d(x,  y,  z)); //center
     tag_map->emplace(id, points);
 }
 

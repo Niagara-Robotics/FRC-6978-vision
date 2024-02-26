@@ -26,13 +26,13 @@ void set_properties(cv::VideoCapture cap) {
 
     cap.set(cv::CAP_PROP_AUTO_EXPOSURE, 1);
     cap.set(cv::CAP_PROP_FOURCC, codec);
-    cap.set(cv::CAP_PROP_EXPOSURE, 65); //25 for arducam
-    cap.set(cv::CAP_PROP_AUTOFOCUS, 1);
-    cap.set(cv::CAP_PROP_FOCUS, 250);
+    cap.set(cv::CAP_PROP_EXPOSURE, 25); //25 for arducam
+    //cap.set(cv::CAP_PROP_AUTOFOCUS, 1);
+    //cap.set(cv::CAP_PROP_FOCUS, 250);
 
     cap.set(cv::CAP_PROP_FRAME_WIDTH, 1280);
-    cap.set(cv::CAP_PROP_FRAME_HEIGHT, 720);
-    cap.set(cv::CAP_PROP_FPS, 60);
+    cap.set(cv::CAP_PROP_FRAME_HEIGHT, 800);
+    cap.set(cv::CAP_PROP_FPS, 120);
 }
 
 int apriltag_pipeline_execute(std::string dev, posestreamer::PoseStreamerServer *pose_streamer, int video_streamer_port)
@@ -64,25 +64,29 @@ int apriltag_pipeline_execute(std::string dev, posestreamer::PoseStreamerServer 
     apriltag_detector_add_family(td, tf);
 
     td->quad_decimate = 2.0;
-    td->quad_sigma = 1.65;
+    //td->quad_sigma = 1.55;
     printf("Default params: decimate: %f, sigma: %f, threads: %f\n", td->quad_decimate, td->quad_sigma, td->nthreads);
     td->nthreads = 3;
 
     //for arducam
-    float cam[10] = {546.68576068,   0,         293.5576285,
+    /*float cam[10] = {546.68576068,   0,         293.5576285,
                     0,         547.1991467,  229.61722473,
-                    0,           0,           1,        };
+                    0,           0,           1,        };*/
+    float cam[10] = {901.56023498,  0.0,           600.07768005,
+                      0.0,          900.4374398,   397.90081813,
+                      0.0,          0.0,           1.0        };
     cv::Mat camera_matrix = cv::Mat(3,3,5, cam);
 
     //for c920
     //float dist[5] = {0.17413211, -0.47767714, -0.00792523, -0.00707075, 0.60882555};
 
     //for arducam
-    float dist[5] = { 0.08148129, -0.21510129, -0.00484131,  0.00231954,  0.41710648};
+    float dist[5] = { 0.05925655, -0.10029338, -0.00188174, -0.00290582,  0.05352116};
+
 
     cv::Mat dist_matrix = cv::Mat(cv::Size(1,5), 5, dist);
 
-    std::map<int, std::vector<cv::Point3d>> tag_map = build_practice_map();
+    std::map<int, std::vector<cv::Point3d>> tag_map = build_map();
 
     for(;;) {
         //if(!cap.isOpened()) break;
@@ -120,11 +124,13 @@ int apriltag_pipeline_execute(std::string dev, posestreamer::PoseStreamerServer 
                 det_points.push_back(cv::Point2f(det->p[1][0], det->p[1][1]));
                 det_points.push_back(cv::Point2f(det->p[2][0], det->p[2][1]));
                 det_points.push_back(cv::Point2f(det->p[3][0], det->p[3][1]));
+                det_points.push_back(cv::Point2f(det->c[0], det->c[1])); //center
 
                 model_points.push_back(tag_map.at(det->id).at(0));
                 model_points.push_back(tag_map.at(det->id).at(1));
                 model_points.push_back(tag_map.at(det->id).at(2));
                 model_points.push_back(tag_map.at(det->id).at(3));
+                model_points.push_back(tag_map.at(det->id).at(4)); //center
 
                 vector<double> tag_pose_vec;
                 tag_pose_vec.push_back(det->c[0]);
@@ -151,7 +157,7 @@ int apriltag_pipeline_execute(std::string dev, posestreamer::PoseStreamerServer 
         clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &model_time);
 
         if(det_points.size() >1) {
-            cv::cornerSubPix(gray, det_points, cv::Size(6,6), cv::Size(-1, -1), cv::TermCriteria(cv::TermCriteria::EPS + cv::TermCriteria::COUNT, 80, 0.001 ));
+            cv::cornerSubPix(gray, det_points, cv::Size(11,11), cv::Size(-1, -1), cv::TermCriteria(cv::TermCriteria::EPS + cv::TermCriteria::COUNT, 200, 0.001 ));
 
             cv::Mat rmatrix;
             cv::solvePnP(model_points, det_points, camera_matrix, dist_matrix, rvec, tvec);

@@ -143,7 +143,7 @@ int apriltag_pipeline_execute(std::string dev, posestreamer::PoseStreamerServer 
                 vector<double> tag_pose_vec;
                 tag_pose_vec.push_back(det->c[0]);
                 tag_pose_vec.push_back(det->c[1]);
-                pose_streamer->publish_stream(2, det->id, tag_pose_vec);
+                pose_streamer->publish_stream(2, det->id, expose_ts, tag_pose_vec);
             }
 
 

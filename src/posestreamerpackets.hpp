@@ -53,7 +53,7 @@ namespace posestreamer
         void *request_body;
     };
 
-    struct streamheader 
+    struct __attribute__ ((packed)) streamheader 
     {
         char pose_class;
         char object_id;

@@ -1,7 +1,7 @@
 #include <visionpipeline.h>
 #include <posestreamerserver.hpp>
 
-#include <opencv2/core.h>
+#include <opencv2/core.hpp>
 #include <string.h>
 
 #ifndef APRILTAG_PIPELINE_H
@@ -14,7 +14,7 @@ namespace vision {
             vision::Streamer webStreamer;
 
         public:
-            string name;
+            std::string name;
 
             int safe_zone = 5;
             float decimate = 2.0;
@@ -24,7 +24,7 @@ namespace vision {
             cv::Mat camera_matrix, distortion_matrix;
 
             void execute();
-    }
+    };
 }
 
 #define APRILTAG_PIPELINE_H

@@ -41,7 +41,7 @@ namespace posestreamer
     
     PoseStreamerServer::PoseStreamerServer(int port) {
         sockaddr_in server_addr;
-        printf("starting posestreamer");
+        printf("starting posestreamer\n");
         server_socket = socket(AF_INET, SOCK_STREAM, 0);
         if(server_socket == -1) {
             printf("Failed to create socket\n");

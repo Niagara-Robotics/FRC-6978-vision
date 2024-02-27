@@ -11,7 +11,7 @@ namespace vision
 {
     Streamer::Streamer(std::string name, int port, cv::Mat *frame, std::condition_variable *frame_mutex)
     {
-        this->handler_index = svr.get_handlers_.size;
+        //this->handler_index = svr.get_handlers_.size;
         svr.Get("/hi", [frame, frame_mutex, this](const httplib::Request &req, httplib::Response &res) {
             
             /*res.set_header("Connection", "close");
@@ -88,7 +88,7 @@ namespace vision
     Streamer::~Streamer()
     {
         m_valid = false;
-        svr.get_handlers_.erase(this->handler_index);
+        //svr.get_handlers_.erase(this->handler_index);
         svr.stop();
         if(thread.joinable()) {
             thread.join();

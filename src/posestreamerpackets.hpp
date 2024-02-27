@@ -57,6 +57,7 @@ namespace posestreamer
     {
         char pose_class;
         char object_id;
+        long timestamp;
         char blob_size;
     };
 

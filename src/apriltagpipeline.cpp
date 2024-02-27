@@ -26,7 +26,7 @@ void set_properties(cv::VideoCapture cap) {
 
     cap.set(cv::CAP_PROP_AUTO_EXPOSURE, 1);
     cap.set(cv::CAP_PROP_FOURCC, codec);
-    cap.set(cv::CAP_PROP_EXPOSURE, 14); //25 for arducam
+    cap.set(cv::CAP_PROP_EXPOSURE, 11); //25 for arducam
     //cap.set(cv::CAP_PROP_AUTOFOCUS, 1);
     //cap.set(cv::CAP_PROP_FOCUS, 250);
 
@@ -67,6 +67,8 @@ int apriltag_pipeline_execute(std::string dev, posestreamer::PoseStreamerServer 
     printf("Default params: decimate: %f, sigma: %f, threads: %f\n", td->quad_decimate, td->quad_sigma, td->nthreads);
     td->nthreads = 3;
 
+    int safe_zone = 5; //border within which tags are discarded
+
     //for arducam
     /*float cam[10] = {546.68576068,   0,         293.5576285,
                     0,         547.1991467,  229.61722473,
@@ -88,13 +90,13 @@ int apriltag_pipeline_execute(std::string dev, posestreamer::PoseStreamerServer 
     std::map<int, std::vector<cv::Point3d>> tag_map = build_home_map();
 
     for(;;) {
-        //if(!cap.isOpened()) break;
         clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start_time);
         if(!cap.grab()) {
             cap.open(dev, cv::CAP_V4L2);
             if(!cap.isOpened()) continue;
             set_properties(cap);
         }
+        long expose_ts = CurrentTime_nanoseconds();
         cap.retrieve(frame);
 
         clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &cap_time);
@@ -115,6 +117,14 @@ int apriltag_pipeline_execute(std::string dev, posestreamer::PoseStreamerServer 
         for (int i = 0; i < zarray_size(detections); i++) {
             apriltag_detection_t *det;
             zarray_get(detections, i, &det);
+
+            //check if tag corners infringe upon frame edge safe zone
+            for(int corner=0; corner < 4; corner++) {
+                if(det->p[corner][0] < safe_zone) continue;
+                if(det->p[corner][0] > gray.cols - safe_zone - 1) continue;
+                if(det->p[corner][1] < safe_zone) continue;
+                if(det->p[corner][1] > gray.rows - safe_zone - 1) continue;
+            }
 
             if(tag_map.count(det->id) > 0) {
                 //add the points from the field model and the corresponding identified aprilTag
@@ -162,21 +172,14 @@ int apriltag_pipeline_execute(std::string dev, posestreamer::PoseStreamerServer 
             cv::solvePnPGeneric(model_points, det_points, camera_matrix, dist_matrix, rvecs, tvecs, false, cv::SOLVEPNP_SQPNP,cv::noArray(), cv::noArray(), proj_err);
             tvec = tvecs.at(0);
             rvec = rvecs.at(0);
-            cv::solvePnPRefineLM(model_points, det_points, camera_matrix, dist_matrix, rvec, tvec, cv::TermCriteria(cv::TermCriteria::EPS, 5000, 0.001 ));
-            printf("Projection error size: %f\n", proj_err.at<double>(0));
+            cv::solvePnPRefineLM(model_points, det_points, camera_matrix, dist_matrix, rvec, tvec, cv::TermCriteria(cv::TermCriteria::EPS + cv::TermCriteria::COUNT, 250, 0.001 ));
 
             cv::Rodrigues(rvec, rmatrix);
             cv::Mat cam_pose = tvec.reshape(0, 1) * rmatrix;
 
-            cv::rectangle(frame, cv::Rect(0, 0,100, 100), cv::Scalar(0,0,0),-1);
-            cv::line(frame, cv::Point(50,0), cv::Point((cam_pose.at<double>(0)/-20)+50, (cam_pose.at<double>(1)/20)),cv::Scalar(255, 255, 255), 2);
-
+            //use a test point(straight down the camera's optical axis) to calculate the robot's heading
             double pt[3] = {0, 0, 250};
             cv::Mat cam_2nd_point = (cv::Mat(cv::Size(3, 1), 6, pt) * rmatrix);
-
-            cv::line(frame, cv::Point(50, 50),cv::Point(50+(cam_2nd_point.at<double>(0)/-20), (cam_2nd_point.at<double>(1)/20)), cv::Scalar(255, 0, 255), 2);
-
-            printf("X2:%f Y2:%f Z2: %f\n", cam_2nd_point.at<double>(0), cam_2nd_point.at<double>(1), cam_2nd_point.at<double>(2));
 
             //calculate heading
             double heading = atan2(cam_2nd_point.at<double>(1), cam_2nd_point.at<double>(0));
@@ -186,10 +189,11 @@ int apriltag_pipeline_execute(std::string dev, posestreamer::PoseStreamerServer 
             cam_pose_vec.push_back(-cam_pose.at<double>(1));
             cam_pose_vec.push_back(-cam_pose.at<double>(2));
             cam_pose_vec.push_back(heading);
-            cam_pose_vec.push_back(proj_err.at<double>(0));
-            cam_pose_vec.push_back(det_points.size() / 4.0);
+            cam_pose_vec.push_back(proj_err.at<double>(0)); //reprojection error
+            cam_pose_vec.push_back(det_points.size() / 4.0); //number of detected tags
+            cam_pose_vec.push_back(tvecs.size()); //number of solutions
 
-            pose_streamer->publish_stream(1, 1, cam_pose_vec);
+            pose_streamer->publish_stream(1, 1, expose_ts, cam_pose_vec);
         }
 
         cond.notify_all();

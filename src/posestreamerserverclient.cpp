@@ -50,7 +50,7 @@ void PoseStreamerServerClient::process_packet()
         }
         //socket_mutex.lock();
         if(packet_type != 3) {
-        printf("packet_type: %i\n", packet_type);
+            printf("packet_type: %i\n", packet_type);
         }
         if(packet_type == 0) {
             continue;
@@ -126,6 +126,7 @@ void PoseStreamerServerClient::handle_request(size_t header_len) {
     }
     if(recvdHeaderLen < header_len)  {
         printf("Header too short: expected %i got %i\n", header_len, recvdHeaderLen);
+        return;
     }
 
     packet.request_body = malloc(packet.request_header.request_size);
@@ -183,7 +184,7 @@ void PoseStreamerServerClient::handle_clock_request() {
     socket_mutex.unlock();
 }
 
-void PoseStreamerServerClient::publishStream(int pose_class, int obj_id, std::vector<double> pose) {
+void PoseStreamerServerClient::publishStream(int pose_class, int obj_id, long timestamp, std::vector<double> pose) {
     int requested_obj_id;
     try
     {
@@ -201,6 +202,7 @@ void PoseStreamerServerClient::publishStream(int pose_class, int obj_id, std::ve
     posestreamer::streamheader stream_header;
     stream_header.object_id = obj_id;
     stream_header.pose_class = pose_class;
+    stream_header.timestamp = timestamp;
     stream_header.blob_size = 8*pose.size();
 
     posestreamer::packetheader packet_header;

@@ -17,7 +17,7 @@ namespace posestreamer
         std::thread thread;
     public:
         PoseStreamerServer(int port);
-        void publish_stream(int pose_class, int obj_id, std::vector<double> pose);
+        void publish_stream(int pose_class, int obj_id, long timestamp, std::vector<double> pose);
         ~PoseStreamerServer();
     };
     

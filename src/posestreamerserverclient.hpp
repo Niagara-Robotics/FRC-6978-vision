@@ -25,7 +25,7 @@ public:
     bool isValid();
     PoseStreamerServerClient(int sock);
     std::vector<int> getRequestedStreams();
-    void publishStream(int pose_class, int obj_id, std::vector<double> pose);
+    void publishStream(int pose_class, int obj_id, long timestamp, std::vector<double> pose);
     ~PoseStreamerServerClient();
 };
 }

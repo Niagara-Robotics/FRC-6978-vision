@@ -27,7 +27,7 @@ namespace posestreamer
         }
     }
 
-    void PoseStreamerServer::publish_stream(int pose_class, int obj_id, std::vector<double> pose) {
+    void PoseStreamerServer::publish_stream(int pose_class, int obj_id, long timestamp, std::vector<double> pose) {
         //printf("publishing stream %i, %i", pose_class, obj_id);
         for (std::vector<std::unique_ptr<PoseStreamerServerClient>>::iterator i = clients.begin(); i < clients.end(); i++)
         {
@@ -35,7 +35,7 @@ namespace posestreamer
                 printf("Removed client\n");
                 clients.erase(i);
             }
-            i->get()->publishStream(pose_class, obj_id, pose);
+            i->get()->publishStream(pose_class, obj_id, timestamp, pose);
         }
     }
     

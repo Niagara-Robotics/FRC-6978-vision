@@ -1,5 +1,5 @@
 namespace vision {
-    class visionpipeline
+    class VisionPipeline
     {
     private:
         /* data */

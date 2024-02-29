@@ -41,7 +41,7 @@ int apriltag_pipeline_execute(std::string dev, posestreamer::PoseStreamerServer 
 
     cv::VideoCapture cap;
 
-    cap.open(0, cv::VideoCaptureAPIs::CAP_V4L2);
+    cap.open(dev, cv::VideoCaptureAPIs::CAP_V4L2);
 
     set_properties(cap);
 
@@ -87,7 +87,7 @@ int apriltag_pipeline_execute(std::string dev, posestreamer::PoseStreamerServer 
 
     cv::Mat dist_matrix = cv::Mat(cv::Size(1,5), 5, dist);
 
-    std::map<int, std::vector<cv::Point3d>> tag_map = build_home_map();
+    std::map<int, std::vector<cv::Point3d>> tag_map = build_map();
 
     for(;;) {
         clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start_time);

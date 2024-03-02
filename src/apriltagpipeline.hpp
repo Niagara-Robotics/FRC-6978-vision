@@ -27,6 +27,8 @@ namespace vision {
             int pose_refine_iteration_limit = 250;
             int exposure = 11;
 
+            float target_z = 800.0;
+
             cv::Mat camera_matrix, distortion_matrix;
 
             void execute();

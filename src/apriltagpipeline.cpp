@@ -1,4 +1,5 @@
 #include <opencv2/core.hpp>
+#include <opencv2/core/hal/hal.hpp>
 #include <opencv2/videoio.hpp>
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
@@ -35,6 +36,15 @@ void set_properties(cv::VideoCapture cap) {
     cap.set(cv::CAP_PROP_FRAME_HEIGHT, 800);
     cap.set(cv::CAP_PROP_FPS, 120);
 }
+
+double straight_line_distance(cv::Mat poseA, cv::Mat poseB) {
+    double dX = pow(abs(poseB.at<double>(0) - poseA.at<double>(0)), 2);
+    double dY = pow(abs(poseB.at<double>(1) - poseA.at<double>(1)), 2);
+    double dZ = pow(abs(poseB.at<double>(2) - poseA.at<double>(2)), 2);
+
+    return sqrt(dX + dY + dZ);
+}
+
 namespace vision {
 
     
@@ -87,11 +97,16 @@ namespace vision {
 
         //for arducam
         float dist[5] = { 0.05925655, -0.10029338, -0.00188174, -0.00290582,  0.05352116};
-
-
         cv::Mat dist_matrix = cv::Mat(cv::Size(1,5), 5, dist);
 
-        std::map<int, std::vector<cv::Point3d>> tag_map = build_map();
+        std::map<int, std::vector<cv::Point3d>> tag_map = build_home_map();
+
+        double inv[3] = {-1.0, -1.0, -1.0};
+        cv::Mat inv_matrix = cv::Mat(cv::Size(3,1), CV_64F, inv);
+
+        printf("Size: %i, %i\n", inv_matrix.cols, inv_matrix.rows);
+
+        cv::Mat robot_pose, previous_robot_pose;
 
         for(;;) {
             clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start_time);
@@ -99,6 +114,7 @@ namespace vision {
                 cap.open(device, cv::CAP_V4L2);
                 if(!cap.isOpened()) continue;
                 set_properties(cap);
+                continue;
             }
             long expose_ts = CurrentTime_nanoseconds();
             cap.retrieve(frame);
@@ -136,13 +152,13 @@ namespace vision {
                     det_points.push_back(cv::Point2f(det->p[1][0], det->p[1][1]));
                     det_points.push_back(cv::Point2f(det->p[2][0], det->p[2][1]));
                     det_points.push_back(cv::Point2f(det->p[3][0], det->p[3][1]));
-                    det_points.push_back(cv::Point2f(det->c[0], det->c[1])); //center
+                    //det_points.push_back(cv::Point2f(det->c[0], det->c[1])); //center
 
                     model_points.push_back(tag_map.at(det->id).at(0));
                     model_points.push_back(tag_map.at(det->id).at(1));
                     model_points.push_back(tag_map.at(det->id).at(2));
                     model_points.push_back(tag_map.at(det->id).at(3));
-                    model_points.push_back(tag_map.at(det->id).at(4)); //center
+                    //model_points.push_back(tag_map.at(det->id).at(4)); //center
 
                     vector<double> tag_pose_vec;
                     tag_pose_vec.push_back(det->c[0]);
@@ -169,17 +185,46 @@ namespace vision {
             clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &model_time);
 
             if(det_points.size() >1) {
-                cv::cornerSubPix(gray, det_points, cv::Size(11,11), cv::Size(-1, -1), cv::TermCriteria(cv::TermCriteria::EPS + cv::TermCriteria::COUNT, 250, 0.001 ));
+                cv::cornerSubPix(gray, det_points, cv::Size(8,8), cv::Size(-1, -1), cv::TermCriteria(cv::TermCriteria::EPS + cv::TermCriteria::COUNT, 250, 0.001 ));
 
-                cv::Mat rmatrix, proj_err, tvec, rvec;
+                cv::Mat potential_rmatrix_1, potential_rmatrix_2, rmatrix, proj_err, potential_pose_1, potential_pose_2;
                 //cv::solvePnP(model_points, det_points, camera_matrix, dist_matrix, rvec, tvec);
                 cv::solvePnPGeneric(model_points, det_points, camera_matrix, dist_matrix, rvecs, tvecs, false, cv::SOLVEPNP_SQPNP,cv::noArray(), cv::noArray(), proj_err);
-                tvec = tvecs.at(0);
-                rvec = rvecs.at(0);
-                cv::solvePnPRefineLM(model_points, det_points, camera_matrix, dist_matrix, rvec, tvec, cv::TermCriteria(cv::TermCriteria::EPS + cv::TermCriteria::COUNT, 250, 0.001 ));
 
-                cv::Rodrigues(rvec, rmatrix);
-                cv::Mat cam_pose = tvec.reshape(0, 1) * rmatrix;
+                cv::Rodrigues(rvecs.at(0), potential_rmatrix_1);
+                potential_pose_1 = tvecs.at(0).reshape(0, 1) * potential_rmatrix_1;
+                //printf("Size: %i, %i\n", potential_pose_1.cols, potential_pose_1.rows);
+                potential_pose_1 = potential_pose_1.mul(inv_matrix);
+
+
+                double pose_1_score = 0.0;
+                double pose_2_score = 0.0;
+
+                if(tvecs.size() > 1) { //decide which pose to use in cases of ambiguous solutions
+                    cv::Rodrigues(rvecs.at(1), potential_rmatrix_2);
+                    potential_pose_2 = tvecs.at(1).reshape(0, 1) * potential_rmatrix_2;
+                    potential_pose_2 = potential_pose_2.mul(inv_matrix);
+
+                    pose_1_score -= abs((potential_pose_1.at<double>(2)) - target_z) / 100.0; //subtract 1 score for every 100mm deviation from expected Z height
+                    pose_2_score -= abs((potential_pose_2.at<double>(2)) - target_z) / 100.0;
+
+                    if(previous_robot_pose.cols != 0) { //if there is a previous pose
+                        //add score to the closes pose to the previous pose
+                        pose_1_score -= straight_line_distance(potential_pose_1, previous_robot_pose) / 300; // subtract 1 score for every 300mm deviation from the previous pose
+                        pose_2_score -= straight_line_distance(potential_pose_2, previous_robot_pose) / 300;
+                    }
+
+                    if(pose_1_score > pose_2_score) {
+                        potential_pose_1.copyTo(robot_pose);
+                        potential_rmatrix_1.copyTo(rmatrix);
+                    } else {
+                        potential_pose_2.copyTo(robot_pose);
+                        potential_rmatrix_2.copyTo(rmatrix);
+                    }
+                } else {
+                    potential_pose_1.copyTo(robot_pose);
+                    potential_rmatrix_1.copyTo(rmatrix);
+                }
 
                 //use a test point(straight down the camera's optical axis) to calculate the robot's heading
                 double pt[3] = {0, 0, 250};
@@ -189,13 +234,15 @@ namespace vision {
                 double heading = atan2(cam_2nd_point.at<double>(1), cam_2nd_point.at<double>(0));
 
                 vector<double> cam_pose_vec;
-                cam_pose_vec.push_back(-cam_pose.at<double>(0));
-                cam_pose_vec.push_back(-cam_pose.at<double>(1));
-                cam_pose_vec.push_back(-cam_pose.at<double>(2));
+                cam_pose_vec.push_back(robot_pose.at<double>(0));
+                cam_pose_vec.push_back(robot_pose.at<double>(1));
+                cam_pose_vec.push_back(robot_pose.at<double>(2));
                 cam_pose_vec.push_back(heading);
                 cam_pose_vec.push_back(proj_err.at<double>(0)); //reprojection error
                 cam_pose_vec.push_back(det_points.size() / 4.0); //number of detected tags
-                cam_pose_vec.push_back(tvecs.size()); //number of solutions
+                cam_pose_vec.push_back((double)tvecs.size()); //number of solutions
+
+                robot_pose.copyTo(previous_robot_pose);
 
                 pose_streamer->publish_stream(1, 1, expose_ts, cam_pose_vec);
             }

@@ -1,3 +1,3 @@
 [submodule "submodules/cpp-httplib"]
 	path = submodules/cpp-httplib
-	url = git@github.com:Danny-Dunn/cpp-httplib.git
+	url = https://github.com/Danny-Dunn/cpp-httplib.git

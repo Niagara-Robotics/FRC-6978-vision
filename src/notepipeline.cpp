@@ -16,6 +16,7 @@
 #include <notepipeline.hpp>
 #include <streamer.hpp>
 #include <visionpipeline.hpp>
+#include <utils.hpp>
 
 using namespace std;
 
@@ -31,7 +32,7 @@ namespace vision {
         u_int32_t codec = 0x47504A4D;
         cap.set(cv::CAP_PROP_AUTO_EXPOSURE, 1);
         cap.set(cv::CAP_PROP_FOURCC, codec);
-        cap.set(cv::CAP_PROP_EXPOSURE, 100);
+        cap.set(cv::CAP_PROP_EXPOSURE, 130);
         cap.set(cv::CAP_PROP_FRAME_WIDTH, 640);
         cap.set(cv::CAP_PROP_FRAME_HEIGHT, 480);
         cap.set(cv::CAP_PROP_FPS, 60);
@@ -42,13 +43,13 @@ namespace vision {
         }
 
         std::condition_variable cond;
-        vision::Streamer smr = vision::Streamer("maincam", video_streamer_port, &rotated, &cond);
+        vision::Streamer smr = vision::Streamer("maincam", video_streamer_port, &eroded, &cond);
 
         struct timespec start_time, end_time;
         clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start_time);
 
         int erosion_type = cv::MORPH_ELLIPSE;
-        int erosion_size = 4;
+        int erosion_size = 2;
         cv::Mat erosion_kernel = cv::getStructuringElement( erosion_type,
                         cv::Size( 2*erosion_size + 1, 2*erosion_size+1 ),
                         cv::Point( erosion_size, erosion_size ) );
@@ -59,6 +60,7 @@ namespace vision {
 
         for(;;) {
             cap.read(frame);
+            long expose_ts = CurrentTime_nanoseconds();
             cv::rotate(frame, rotated, cv::ROTATE_180);
             clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start_time);
             //clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &cap_time);
@@ -66,8 +68,8 @@ namespace vision {
 
             
             cv::cvtColor(rotated, hsv, cv::COLOR_BGR2HSV);
-            cv::inRange(hsv, cv::Scalar(0, 140, 60), cv::Scalar(21,255,255), eroded);
-            //cv::erode(threshold, eroded, erosion_kernel);
+            cv::inRange(hsv, cv::Scalar(2, 120, 55), cv::Scalar(10,255,255), threshold);
+            cv::erode(threshold, eroded, erosion_kernel);
             //clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &convert_time);
 
             cv::findContours(eroded, contours, hierarchy, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
@@ -89,10 +91,14 @@ namespace vision {
             if(largestIndex >= 0) {
                 cv::Rect box = cv::boundingRect(contours[largestIndex]);
                 //cv::drawContours(rotated, contours, -1, cv::Scalar(0, 255, 0));
-                printf("%i,%i\n", 
+                std::vector<double> pose = std::vector<double>();
+                pose.push_back(box.x + (box.width / 2.0));
+                pose.push_back(box.y + (box.height / 2.0));
+                pose_streamer->publish_stream(3, 1, expose_ts, pose);
+                /*printf("%i,%i\n", 
                     box.x, 
                     box.y
-                );
+                );*/
             }
             cond.notify_all();
             

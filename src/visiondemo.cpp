@@ -29,6 +29,7 @@ int main(int, char**) {
     vision::NotePipeline note_pipeline = vision::NotePipeline();
     note_pipeline.video_streamer_port = 8009;
     note_pipeline.device = "/dev/v4l/by-id/usb-HD_Camera_Manufacturer_USB_2.0_Camera-video-index0";
+    note_pipeline.pose_streamer = &pss;
 
     std::thread note_camera_pipeline_thread = std::thread(&vision::NotePipeline::execute, &note_pipeline);
 

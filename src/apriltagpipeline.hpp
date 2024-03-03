@@ -20,7 +20,7 @@ namespace vision {
             posestreamer::PoseStreamerServer *pose_streamer;
             int video_streamer_port;
 
-            int safe_zone = 5;
+            int safe_zone = 10;
             float decimate = 2.0;
             float sigma = 1.55;
             int corner_refine_iteration_limit = 250;

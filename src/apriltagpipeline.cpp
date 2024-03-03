@@ -79,7 +79,7 @@ namespace vision {
         td->quad_decimate = decimate;
         td->quad_sigma = sigma;
         printf("Default params: decimate: %f, sigma: %f, threads: %f\n", td->quad_decimate, td->quad_sigma, td->nthreads);
-        td->nthreads = 3;
+        td->nthreads = 4;
 
         //int safe_zone = 5; //border within which tags are discarded
 
@@ -139,12 +139,15 @@ namespace vision {
                 zarray_get(detections, i, &det);
 
                 //check if tag corners infringe upon frame edge safe zone
+                bool reject = false;
                 for(int corner=0; corner < 4; corner++) {
-                    if(det->p[corner][0] < safe_zone) continue;
-                    if(det->p[corner][0] > gray.cols - safe_zone - 1) continue;
-                    if(det->p[corner][1] < safe_zone) continue;
-                    if(det->p[corner][1] > gray.rows - safe_zone - 1) continue;
+                    if(det->p[corner][0] < safe_zone) reject = true;
+                    if(det->p[corner][0] > gray.cols - safe_zone - 1) reject = true;
+                    if(det->p[corner][1] < safe_zone) reject = true;
+                    if(det->p[corner][1] > gray.rows - safe_zone - 1) reject = true;
                 }
+
+                if(reject) continue;
 
                 if(tag_map.count(det->id) > 0) {
                     //add the points from the field model and the corresponding identified aprilTag
@@ -168,7 +171,7 @@ namespace vision {
 
 
                 //draw the edges of the marker on the video stream
-                cv::line(frame, cv::Point(det->p[0][0], det->p[0][1]),
+                /*cv::line(frame, cv::Point(det->p[0][0], det->p[0][1]),
                         cv::Point(det->p[1][0], det->p[1][1]),
                         cv::Scalar(0, 0xff, 0), 2);
                 cv::line(frame, cv::Point(det->p[0][0], det->p[0][1]),
@@ -179,13 +182,16 @@ namespace vision {
                         cv::Scalar(0xff, 0, 0), 2);
                 cv::line(frame, cv::Point(det->p[2][0], det->p[2][1]),
                         cv::Point(det->p[3][0], det->p[3][1]),
-                        cv::Scalar(0xff, 0, 0), 2);
+                        cv::Scalar(0xff, 0, 0), 2);*/
             }
 
             clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &model_time);
 
             if(det_points.size() >1) {
-                cv::cornerSubPix(gray, det_points, cv::Size(8,8), cv::Size(-1, -1), cv::TermCriteria(cv::TermCriteria::EPS + cv::TermCriteria::COUNT, 250, 0.001 ));
+                //cv::cornerSubPix(gray, det_points, cv::Size(4,4), cv::Size(-1, -1), cv::TermCriteria(cv::TermCriteria::EPS + cv::TermCriteria::COUNT, 250, 0.001 ));
+
+                for(int i = 0; i < det_points.size(); i++)
+                cv::drawMarker(frame, det_points.at(i), cv::Scalar(0xff, 0, 0), cv::MARKER_CROSS, 20, 1);
 
                 cv::Mat potential_rmatrix_1, potential_rmatrix_2, rmatrix, proj_err, potential_pose_1, potential_pose_2;
                 //cv::solvePnP(model_points, det_points, camera_matrix, dist_matrix, rvec, tvec);

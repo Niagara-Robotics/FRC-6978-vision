@@ -16,6 +16,44 @@ using namespace std;
 namespace fs=std::filesystem;
 
 // hi
+
+int parse(int, char**) {
+    FILE *fp = fopen("pipelines.conf", "r");
+
+    char s1[255];
+    char s2[255];
+    char s3[255];
+    char s4[255];
+
+    char line[255];
+
+    int r = 0;
+
+    while(true) {
+        r = fscanf(fp, "%s\n", line);
+
+        if(r == EOF) {
+            printf("EOF\n");
+            break;
+        }
+
+        //printf("Line: %s\n", line);
+
+        r = sscanf(line, "%[^=\n]=%s\n", s3, s4);
+
+        if(r == 2) {
+            printf("config value: %s, %s\n", s3, s4);
+        } else if(r == 1) {
+            //printf("attempting to parse section header\n");
+            sscanf(line, "[%[^:]:%[^]]\]\n", s1, s2);
+            printf("got section header: %s %s\n", s1, s2);
+        } else if (r == EOF) {
+            break;
+        }
+    }
+    printf("1: %s 2: %s 3: %s 4: %s\n", s1, s2, s3, s4);
+}
+
 int main(int, char**) {
     posestreamer::PoseStreamerServer pss = posestreamer::PoseStreamerServer(8833);
 

@@ -99,7 +99,7 @@ namespace vision {
         float dist[5] = { 0.05925655, -0.10029338, -0.00188174, -0.00290582,  0.05352116};
         cv::Mat dist_matrix = cv::Mat(cv::Size(1,5), 5, dist);
 
-        std::map<int, std::vector<cv::Point3d>> tag_map = build_home_map();
+        std::map<int, std::vector<cv::Point3d>> tag_map = build_map();
 
         double inv[3] = {-1.0, -1.0, -1.0};
         cv::Mat inv_matrix = cv::Mat(cv::Size(3,1), CV_64F, inv);

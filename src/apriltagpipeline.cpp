@@ -51,18 +51,9 @@ namespace vision {
 
     void AprilTagPipeline::execute()
     {
-        cv::Mat frame, gray;
+        cv::Mat gray;
 
-        cv::VideoCapture cap;
-
-        cap.open(device, cv::VideoCaptureAPIs::CAP_V4L2);
-
-        set_properties(cap);
-
-        if(!cap.isOpened()) {
-            cerr << "Unable to open camera\n";
-            return;
-        }
+        
 
         std::condition_variable cond;
         vision::Streamer smr = vision::Streamer("maincam", video_streamer_port, &frame, &cond);
@@ -109,15 +100,10 @@ namespace vision {
         cv::Mat robot_pose, previous_robot_pose;
 
         for(;;) {
+            processing_ready = true;
+            while(!frame_waiting) {}
+            processing_ready = false;
             clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start_time);
-            if(!cap.grab()) {
-                cap.open(device, cv::CAP_V4L2);
-                if(!cap.isOpened()) continue;
-                set_properties(cap);
-                continue;
-            }
-            long expose_ts = CurrentTime_nanoseconds();
-            cap.retrieve(frame);
 
             clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &cap_time);
 
@@ -270,6 +256,39 @@ namespace vision {
             }
         }
         apriltag_detector_destroy(td);
+    }
+
+    ApriltagPipeline::capture() {
+        cv::VideoCapture cap;
+
+        cap.open(device, cv::VideoCaptureAPIs::CAP_V4L2);
+
+        set_properties(cap);
+
+        if(!cap.isOpened()) {
+            cerr << "Unable to open camera\n";
+            return;
+        }
+        for(;;) {
+            
+            if(!cap.grab()) {
+                cap.open(device, cv::CAP_V4L2);
+                if(!cap.isOpened()) continue;
+                set_properties(cap);
+                continue;
+            }
+            long frame_ts = CurrentTime_nanoseconds();
+            vector<double> tele = vector<double>();
+            tele.push_back((frame_ts - last_frame_ts) / 1000000.0);
+            long last_frame_ts=frame_ts;
+            pose_streamer->publishStream(128, 1, frame_ts, );
+            if(processing_ready) {
+                expose_ts = frame_ts;
+                cap.retrieve(frame);
+                frame_waiting = true;
+                processing_ready = false;
+            }
+        }
     }
 
     AprilTagPipeline::AprilTagPipeline() {

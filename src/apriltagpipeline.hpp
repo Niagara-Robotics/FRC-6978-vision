@@ -31,7 +31,14 @@ namespace vision {
 
             cv::Mat camera_matrix, distortion_matrix;
 
+            cv::Mat frame;
+
+            bool processing_ready = false;
+            bool frame_waiting = false;
+            long expose_ts, last_frame_ts;
+
             void execute();
+            void capture();
 
             AprilTagPipeline();
             ~AprilTagPipeline();

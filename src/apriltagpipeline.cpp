@@ -174,7 +174,7 @@ namespace vision {
             clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &model_time);
 
             if(det_points.size() >1) {
-                //cv::cornerSubPix(gray, det_points, cv::Size(4,4), cv::Size(-1, -1), cv::TermCriteria(cv::TermCriteria::EPS + cv::TermCriteria::COUNT, 250, 0.001 ));
+                //cv::cornerSubPix(gray, det_points, cv::Size(4,4), cv::Size(-1, -1), cv::TermCriteria(cv::TermCriteria::EPS + cv::TermCriteria::COUNT, 40, 0.001 ));
 
                 for(int i = 0; i < det_points.size(); i++)
                 cv::drawMarker(frame, det_points.at(i), cv::Scalar(0xff, 0, 0), cv::MARKER_CROSS, 20, 1);
@@ -183,6 +183,7 @@ namespace vision {
                 //cv::solvePnP(model_points, det_points, camera_matrix, dist_matrix, rvec, tvec);
                 cv::solvePnPGeneric(model_points, det_points, camera_matrix, dist_matrix, rvecs, tvecs, false, cv::SOLVEPNP_SQPNP,cv::noArray(), cv::noArray(), proj_err);
 
+                cv::solvePnPRefineLM(model_points, det_points, camera_matrix, dist_matrix, rvecs.at(0), tvecs.at(0));
                 cv::Rodrigues(rvecs.at(0), potential_rmatrix_1);
                 potential_pose_1 = tvecs.at(0).reshape(0, 1) * potential_rmatrix_1;
                 //printf("Size: %i, %i\n", potential_pose_1.cols, potential_pose_1.rows);
@@ -193,6 +194,7 @@ namespace vision {
                 double pose_2_score = 0.0;
 
                 if(tvecs.size() > 1) { //decide which pose to use in cases of ambiguous solutions
+                    cv::solvePnPRefineLM(model_points, det_points, camera_matrix, dist_matrix, rvecs.at(1), tvecs.at(1));
                     cv::Rodrigues(rvecs.at(1), potential_rmatrix_2);
                     potential_pose_2 = tvecs.at(1).reshape(0, 1) * potential_rmatrix_2;
                     potential_pose_2 = potential_pose_2.mul(inv_matrix);
@@ -217,6 +219,8 @@ namespace vision {
                     potential_pose_1.copyTo(robot_pose);
                     potential_rmatrix_1.copyTo(rmatrix);
                 }
+
+                
 
                 //use a test point(straight down the camera's optical axis) to calculate the robot's heading
                 double pt[3] = {0, 0, 250};

@@ -3,6 +3,7 @@
 
 #include <opencv2/core.hpp>
 #include <string.h>
+#include <thread>
 
 #ifndef APRILTAG_PIPELINE_H
 
@@ -37,6 +38,10 @@ namespace vision {
             bool frame_waiting = false;
             long expose_ts, last_frame_ts;
 
+            std::thread capture_thread;
+            std::thread processing_thread;
+
+            void start();
             void execute();
             void capture();
 

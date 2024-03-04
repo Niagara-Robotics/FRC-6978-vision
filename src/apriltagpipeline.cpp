@@ -101,7 +101,8 @@ namespace vision {
 
         for(;;) {
             processing_ready = true;
-            while(!frame_waiting) {}
+            while(!frame_waiting) {usleep(1);}
+            frame_waiting =false;
             processing_ready = false;
             clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start_time);
 
@@ -262,7 +263,7 @@ namespace vision {
         apriltag_detector_destroy(td);
     }
 
-    ApriltagPipeline::capture() {
+    void AprilTagPipeline::capture() {
         cv::VideoCapture cap;
 
         cap.open(device, cv::VideoCaptureAPIs::CAP_V4L2);
@@ -285,7 +286,7 @@ namespace vision {
             vector<double> tele = vector<double>();
             tele.push_back((frame_ts - last_frame_ts) / 1000000.0);
             long last_frame_ts=frame_ts;
-            pose_streamer->publishStream(128, 1, frame_ts, );
+            pose_streamer->publish_stream(128, 1, frame_ts, tele);
             if(processing_ready) {
                 expose_ts = frame_ts;
                 cap.retrieve(frame);
@@ -293,6 +294,11 @@ namespace vision {
                 processing_ready = false;
             }
         }
+    }
+
+    void AprilTagPipeline::start() {
+        capture_thread = std::thread(&vision::AprilTagPipeline::capture, this);
+        processing_thread = std::thread(&vision::AprilTagPipeline::execute, this);
     }
 
     AprilTagPipeline::AprilTagPipeline() {

@@ -62,7 +62,7 @@ int main(int, char**) {
     reverse_camera_pipeline.pose_streamer = &pss;
     reverse_camera_pipeline.video_streamer_port = 8008;
 
-    std::thread reverse_camera_pipeline_thread = std::thread(&vision::AprilTagPipeline::execute, &reverse_camera_pipeline);
+    reverse_camera_pipeline.start();
 
     vision::NotePipeline note_pipeline = vision::NotePipeline();
     note_pipeline.video_streamer_port = 8009;

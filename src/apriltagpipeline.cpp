@@ -26,9 +26,10 @@ using namespace std;
 void set_properties(cv::VideoCapture cap) {
     u_int32_t codec = 0x47504A4D; //MJPEG
 
+    cap.set(cv::CAP_PROP_AUTO_EXPOSURE, 3);
     cap.set(cv::CAP_PROP_AUTO_EXPOSURE, 1);
     cap.set(cv::CAP_PROP_FOURCC, codec);
-    cap.set(cv::CAP_PROP_EXPOSURE, 11); //25 for arducam
+    cap.set(cv::CAP_PROP_EXPOSURE, 10); //25 for arducam
     //cap.set(cv::CAP_PROP_AUTOFOCUS, 1);
     //cap.set(cv::CAP_PROP_FOCUS, 250);
 
@@ -101,7 +102,8 @@ namespace vision {
 
         for(;;) {
             processing_ready = true;
-            while(!frame_waiting) {}
+            while(!frame_waiting) {usleep(1);}
+            frame_waiting =false;
             processing_ready = false;
             clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start_time);
 
@@ -183,7 +185,7 @@ namespace vision {
                 //cv::solvePnP(model_points, det_points, camera_matrix, dist_matrix, rvec, tvec);
                 cv::solvePnPGeneric(model_points, det_points, camera_matrix, dist_matrix, rvecs, tvecs, false, cv::SOLVEPNP_SQPNP,cv::noArray(), cv::noArray(), proj_err);
 
-                cv::solvePnPRefineLM(model_points, det_points, camera_matrix, dist_matrix, rvecs.at(0), tvecs.at(0));
+                //cv::solvePnPRefineLM(model_points, det_points, camera_matrix, dist_matrix, rvecs.at(0), tvecs.at(0));
                 cv::Rodrigues(rvecs.at(0), potential_rmatrix_1);
                 potential_pose_1 = tvecs.at(0).reshape(0, 1) * potential_rmatrix_1;
                 //printf("Size: %i, %i\n", potential_pose_1.cols, potential_pose_1.rows);
@@ -194,7 +196,7 @@ namespace vision {
                 double pose_2_score = 0.0;
 
                 if(tvecs.size() > 1) { //decide which pose to use in cases of ambiguous solutions
-                    cv::solvePnPRefineLM(model_points, det_points, camera_matrix, dist_matrix, rvecs.at(1), tvecs.at(1));
+                    //cv::solvePnPRefineLM(model_points, det_points, camera_matrix, dist_matrix, rvecs.at(1), tvecs.at(1));
                     cv::Rodrigues(rvecs.at(1), potential_rmatrix_2);
                     potential_pose_2 = tvecs.at(1).reshape(0, 1) * potential_rmatrix_2;
                     potential_pose_2 = potential_pose_2.mul(inv_matrix);
@@ -262,7 +264,7 @@ namespace vision {
         apriltag_detector_destroy(td);
     }
 
-    ApriltagPipeline::capture() {
+    void AprilTagPipeline::capture() {
         cv::VideoCapture cap;
 
         cap.open(device, cv::VideoCaptureAPIs::CAP_V4L2);
@@ -285,7 +287,7 @@ namespace vision {
             vector<double> tele = vector<double>();
             tele.push_back((frame_ts - last_frame_ts) / 1000000.0);
             long last_frame_ts=frame_ts;
-            pose_streamer->publishStream(128, 1, frame_ts, );
+            pose_streamer->publish_stream(128, 1, frame_ts, tele);
             if(processing_ready) {
                 expose_ts = frame_ts;
                 cap.retrieve(frame);
@@ -293,6 +295,11 @@ namespace vision {
                 processing_ready = false;
             }
         }
+    }
+
+    void AprilTagPipeline::start() {
+        capture_thread = std::thread(&vision::AprilTagPipeline::capture, this);
+        processing_thread = std::thread(&vision::AprilTagPipeline::execute, this);
     }
 
     AprilTagPipeline::AprilTagPipeline() {
